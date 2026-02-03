@@ -1,4 +1,4 @@
-import {dirname, relative, resolve} from 'node:path';
+import {dirname, resolve} from 'node:path';
 
 type UseTsconfigPathsOptions = {
     basePath?: string;
