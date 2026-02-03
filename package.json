@@ -1,6 +1,6 @@
 {
   "name": "@jsnw/srv-utils",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Server-side utilities for Node.js/TypeScript: tsconfig paths, Nest helpers, and config loading.",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
