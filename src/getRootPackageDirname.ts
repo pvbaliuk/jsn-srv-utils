@@ -13,6 +13,12 @@ export function getRootPackageDirnameSync(): string{
     let path = resolve(__dirname, '..'),
         lastValidPath = path;
 
+    if(/[\\\/]node_modules[\\\/]/i.test(path)){
+        const pieces = path.split(/[\\\/]node_modules[\\\/]/i);
+        if(pieces.length > 0)
+            path = pieces[0];
+    }
+
     while(true){
         const packageJsonPath = resolve(path, 'package.json');
         try{
