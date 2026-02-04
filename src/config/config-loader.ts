@@ -2,12 +2,26 @@ import {sep} from 'node:path';
 import {readFileSync} from 'node:fs';
 import {z, ZodError} from 'zod';
 import {parse} from 'yaml';
+import {type ErrorResult} from '@jsnw/common-utils';
 import {ResolvedConfig} from './config-loader.types';
+import {fileExistsSync} from '../file-exists';
 import {getRootPackageDirnameSync} from '../getRootPackageDirname';
 
 const PKG_ROOT_REGEX = /^%pkgroot[\/\\]/i;
 
-export abstract class ConfigLoader {
+export class ConfigLoader {
+
+    private static _instance: ConfigLoader;
+
+    /**
+     * @returns {ConfigLoader}
+     */
+    public static instance(): ConfigLoader{
+        if(!ConfigLoader._instance)
+            ConfigLoader._instance = new ConfigLoader();
+
+        return ConfigLoader._instance;
+    }
 
     /**
      * @template {z.ZodObject} S
@@ -15,58 +29,147 @@ export abstract class ConfigLoader {
      * @param {string} path You can use %pkgroot prefix for automatic project root resolution by AppConfigLoader.
      * Example: %pkgroot/config.yml
      * @param {S} schema
-     * @param {P} addProps
-     * @returns {ResolvedConfig<S>}
+     * @param {P} [addProps]
+     * @returns {ResolvedConfig<S, P>}
      */
-    public static loadAndValidate<
+    public static loadConfig<
         S extends z.ZodObject,
         P extends object|undefined = undefined
     >(path: string, schema: S, addProps?: P): ResolvedConfig<S, P>{
-        if(PKG_ROOT_REGEX.test(path))
-            path = path.replace(PKG_ROOT_REGEX, getRootPackageDirnameSync() + sep);
+        const loader = ConfigLoader.instance();
+        const [yaml, loadError] = loader.loadYamlFile(path);
+        if(loadError){
+            console.error(loadError.message);
+            process.exit(1);
+        }
 
-        let data: string = undefined!;
-        let parsedYaml: any = undefined!;
+        const [processedYaml, includeErrors] = loader.processIncludes(yaml);
+        if(includeErrors && includeErrors.length > 0){
+            for(const err of includeErrors)
+                console.error(`$include error: ${err.message}`);
+
+            process.exit(1);
+        }
+
+        const [validatedYaml, validateError] = loader.validateYaml(processedYaml, schema);
+        if(validateError){
+            console.error(validateError.message);
+            process.exit(1);
+        }
+
+        //@ts-expect-error
+        validatedYaml['isDev'] = (
+            process?.env?.APP_CONTEXT
+            ?? process?.env?.APPLICATION_CONTEXT
+            ?? process?.env?.NODE_ENV
+            ?? ''
+        ).toLowerCase() !== 'production';
+
+        return {
+            ...validatedYaml,
+            ...(addProps ?? {})
+        } as ResolvedConfig<S, P>;
+    }
+
+    private constructor() {}
+
+    /**
+     * @param {string} path
+     * @returns {ErrorResult<any, Error>}
+     * @protected
+     */
+    protected loadYamlFile(path: string): ErrorResult<any, Error>{
+        path = this.resolvePkgRootPath(path);
+        if(!fileExistsSync(path))
+            return [null, new Error(`YAML file does not exists at path: ${path}`)];
+
+        let data: string = undefined!,
+            parsedYml: any = undefined!;
 
         try{
             data = readFileSync(path, 'utf-8');
         }catch(e){
-            console.error(`Failed to read config file at path: ${path}\nError: ${e?.message ?? '-'}; syscall: ${e?.syscall ?? '-'}`);
-            process.exit(1);
+            return [null, new Error(`Failed to read config file at path: ${path}`)];
         }
 
         try{
-            parsedYaml = parse(data, {prettyErrors: true});
+            parsedYml = parse(data, {prettyErrors: true});
         }catch(e){
-            console.error(`Failed to parse YAML file at path: ${path}\nError: ${e?.message ?? '-'}`);
-            process.exit(1);
+            return [null, new Error(`Failed to parse YAML file at path: ${path}`)];
         }
 
-        const extendedSchema = schema.transform(v => ({
-            isDev: (
-                process?.env?.APP_CONTEXT
-                ?? process?.env?.APPLICATION_CONTEXT
-                ?? process?.env?.NODE_ENV
-                ?? ''
-            ).toLowerCase() !== 'production',
-            ...v
-        }));
+        return [parsedYml, null];
+    }
 
-        const {data: config, error, success} = extendedSchema.safeParse(parsedYaml);
+    /**
+     * @template {z.ZodTypeAny} T
+     * @param data
+     * @param {T} schema
+     * @returns {ErrorResult<output<T>, Error>}
+     * @protected
+     */
+    protected validateYaml<T extends z.ZodTypeAny>(data: any, schema: T): ErrorResult<z.infer<T>, Error>{
+        const {data: parsed, error, success} = schema.safeParse(data);
         if(!success){
-            if(error && error instanceof ZodError){
-                console.error(`Failed to validate config file at path ${path}. Error: ${z.prettifyError(error)}`);
-                process.exit(1);
+            if(error && error instanceof ZodError)
+                return [null, new Error(`Failed to validate yaml (#1)`)];
+
+            return [null, new Error(`Failed to validate yaml (#2)`)];
+        }
+
+        return [parsed, null];
+    }
+
+    /**
+     * @param yaml
+     * @returns {ErrorResult<any, Error[]>}
+     * @protected
+     */
+    protected processIncludes(yaml: any): ErrorResult<any, Error[]>{
+        if(typeof yaml !== 'object')
+            return yaml;
+
+        const nodesToVisit: any[] = [yaml],
+            errors: Error[] = [];
+
+        for(let i = 0; i < nodesToVisit.length; i++){
+            const node = nodesToVisit[i];
+            if(typeof node !== 'object' || Array.isArray(node))
+                continue;
+
+            if(node['$include'] && typeof node['$include'] === 'string'){
+                const [loadedYaml, loadError] = this.loadYamlFile(node['$include']);
+                delete node['$include'];
+
+                if(loadError) {
+                    errors.push(loadError)
+                }else{
+                    for(const [k, v] of Object.entries(loadedYaml))
+                        node[k] = v;
+                }
             }
 
-            console.error(`Failed to parse config file at path ${path}`);
-            process.exit(1);
+            for(const k of Object.keys(node)){
+                if(Object.hasOwn(node, k)
+                    && typeof node[k] === 'object'
+                    && !Array.isArray(node[k])
+                )
+                    nodesToVisit.push(node[k]);
+            }
         }
 
-        return {
-            ...config,
-            ...(addProps ? {} : addProps)
-        } as ResolvedConfig<S, P>;
+        return [yaml, errors];
     }
+
+    //region Utils
+
+    private resolvePkgRootPath(path: string): string{
+        if(PKG_ROOT_REGEX.test(path))
+            path = path.replace(PKG_ROOT_REGEX, getRootPackageDirnameSync() + sep);
+
+        return path;
+    }
+
+    //endregion
 
 }
