@@ -43,7 +43,7 @@ export class ConfigLoader {
             process.exit(1);
         }
 
-        const [processedYaml, includeErrors] = loader.processIncludes(yaml);
+        const [processedYaml, includeErrors] = loader.processIncludes(path, yaml);
         if(includeErrors && includeErrors.length > 0){
             for(const err of includeErrors)
                 console.error(`$include error: ${err.message}`);
@@ -121,11 +121,12 @@ export class ConfigLoader {
     }
 
     /**
+     * @param {string} mainYamlPath
      * @param yaml
      * @returns {ErrorResult<any, Error[]>}
      * @protected
      */
-    protected processIncludes(yaml: any): ErrorResult<any, Error[]>{
+    protected processIncludes(mainYamlPath: string, yaml: any): ErrorResult<any, Error[]>{
         if(typeof yaml !== 'object')
             return yaml;
 
@@ -138,7 +139,7 @@ export class ConfigLoader {
                 continue;
 
             if(node['$include'] && typeof node['$include'] === 'string'){
-                const [loadedYaml, loadError] = this.loadYamlFile(resolve(node['$include']));
+                const [loadedYaml, loadError] = this.loadYamlFile(resolve(mainYamlPath, node['$include']));
                 delete node['$include'];
 
                 if(loadError) {
