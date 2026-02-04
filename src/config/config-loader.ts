@@ -1,4 +1,4 @@
-import {sep} from 'node:path';
+import {resolve, sep} from 'node:path';
 import {readFileSync} from 'node:fs';
 import {z, ZodError} from 'zod';
 import {parse} from 'yaml';
@@ -138,7 +138,7 @@ export class ConfigLoader {
                 continue;
 
             if(node['$include'] && typeof node['$include'] === 'string'){
-                const [loadedYaml, loadError] = this.loadYamlFile(node['$include']);
+                const [loadedYaml, loadError] = this.loadYamlFile(resolve(node['$include']));
                 delete node['$include'];
 
                 if(loadError) {
