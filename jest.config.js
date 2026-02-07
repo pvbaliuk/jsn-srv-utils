@@ -2,7 +2,7 @@ const {createDefaultPreset} = require('ts-jest');
 
 const tsJestTransformCfg = createDefaultPreset({
     compiler: 'typescript',
-    tsconfig: 'tsconfig.cjs.json'
+    tsconfig: 'tsconfig.json'
 }).transform;
 
 /** @type {import('jest').Config} **/

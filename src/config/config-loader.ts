@@ -1,4 +1,4 @@
-import {resolve, sep} from 'node:path';
+import {dirname, resolve, sep} from 'node:path';
 import {readFileSync} from 'node:fs';
 import {z, ZodError} from 'zod';
 import {parse} from 'yaml';
@@ -43,7 +43,7 @@ export class ConfigLoader {
             process.exit(1);
         }
 
-        const [processedYaml, includeErrors] = loader.processIncludes(path, yaml);
+        const [processedYaml, includeErrors] = loader.processIncludes(dirname(path), yaml);
         if(includeErrors && includeErrors.length > 0){
             for(const err of includeErrors)
                 console.error(`$include error: ${err.message}`);
@@ -121,12 +121,12 @@ export class ConfigLoader {
     }
 
     /**
-     * @param {string} mainYamlPath
+     * @param {string} mainYamlDirname
      * @param yaml
      * @returns {ErrorResult<any, Error[]>}
      * @protected
      */
-    protected processIncludes(mainYamlPath: string, yaml: any): ErrorResult<any, Error[]>{
+    protected processIncludes(mainYamlDirname: string, yaml: any): ErrorResult<any, Error[]>{
         if(typeof yaml !== 'object')
             return yaml;
 
@@ -139,7 +139,7 @@ export class ConfigLoader {
                 continue;
 
             if(node['$include'] && typeof node['$include'] === 'string'){
-                const [loadedYaml, loadError] = this.loadYamlFile(resolve(mainYamlPath, node['$include']));
+                const [loadedYaml, loadError] = this.loadYamlFile(this.resolveIncludePath(mainYamlDirname, node['$include']));
                 delete node['$include'];
 
                 if(loadError) {
@@ -169,6 +169,16 @@ export class ConfigLoader {
             path = path.replace(PKG_ROOT_REGEX, getRootPackageDirnameSync() + sep);
 
         return path;
+    }
+
+    /**
+     * @param {string} fromDirname
+     * @param {string} toPath
+     * @returns {string}
+     * @private
+     */
+    private resolveIncludePath(fromDirname: string, toPath: string): string{
+        return resolve(fromDirname, toPath);
     }
 
     //endregion
