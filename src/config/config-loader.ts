@@ -7,7 +7,7 @@ import {ResolvedConfig} from './config-loader.types';
 import {fileExistsSync} from '../file-exists';
 import {getRootPackageDirnameSync} from '../getRootPackageDirname';
 
-const PKG_ROOT_REGEX = /^%pkgroot[\/\\]/i;
+const PKG_ROOT_REGEX = /^%pkgroot(?:[\/\\]|$)/i;
 
 export class ConfigLoader {
 
@@ -168,7 +168,7 @@ export class ConfigLoader {
         if(PKG_ROOT_REGEX.test(path))
             path = path.replace(PKG_ROOT_REGEX, getRootPackageDirnameSync() + sep);
 
-        return path;
+        return resolve(path);
     }
 
     /**
@@ -178,7 +178,7 @@ export class ConfigLoader {
      * @private
      */
     private resolveIncludePath(fromDirname: string, toPath: string): string{
-        return resolve(fromDirname, toPath);
+        return resolve(this.resolvePkgRootPath(fromDirname), toPath);
     }
 
     //endregion
