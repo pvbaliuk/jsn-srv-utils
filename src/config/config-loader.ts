@@ -138,15 +138,29 @@ export class ConfigLoader {
             if(typeof node !== 'object' || Array.isArray(node))
                 continue;
 
-            if(node['$include'] && typeof node['$include'] === 'string'){
-                const [loadedYaml, loadError] = this.loadYamlFile(this.resolveIncludePath(mainYamlDirname, node['$include']));
+            if(node['$include']){
+                const $includePaths: string[] = [];
+                if(typeof node['$include'] === 'string'){
+                    $includePaths.push(node['$include']);
+                }else if(Array.isArray(node['$include'])){
+                    $includePaths.push(...(
+                        node['$include']
+                            .filter(v =>
+                                v && typeof v === 'string' && v.trim() !== ''
+                            )
+                    ));
+                }
+
                 delete node['$include'];
 
-                if(loadError) {
-                    errors.push(loadError)
-                }else{
-                    for(const [k, v] of Object.entries(loadedYaml))
-                        node[k] = v;
+                for(const path of $includePaths){
+                    const [loadedYaml, loadError] = this.loadYamlFile(this.resolveIncludePath(mainYamlDirname, path));
+                    if(loadError) {
+                        errors.push(loadError)
+                    }else{
+                        for(const [k, v] of Object.entries(loadedYaml))
+                            node[k] = v;
+                    }
                 }
             }
 
