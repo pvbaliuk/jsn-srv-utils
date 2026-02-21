@@ -8,6 +8,7 @@ import {fileExistsSync} from '../file-exists';
 import {getRootPackageDirnameSync} from '../getRootPackageDirname';
 
 const PKG_ROOT_REGEX = /^%pkgroot(?:[\/\\]|$)/i;
+const ENV_VAR_REGEX = /^%env:(?<var_name>[A-Za-z0-9_]+)(?:[\/\\]|$)/i;
 
 export class ConfigLoader {
 
@@ -27,7 +28,9 @@ export class ConfigLoader {
      * @template {z.ZodObject} S
      * @template {object} P
      * @param {string} path You can use %pkgroot prefix for automatic project root resolution by AppConfigLoader.
-     * Example: %pkgroot/config.yml
+     * Also, you can use %env:ENV_VARIABLE to resolve config path based on environment variable
+     * Example 1: %pkgroot/config.yml
+     * Example 2: %env:CONFIG_PATH/config.yml
      * @param {S} schema
      * @param {P} [addProps]
      * @returns {ResolvedConfig<S, P>}
@@ -79,7 +82,7 @@ export class ConfigLoader {
      * @protected
      */
     protected loadYamlFile(path: string): ErrorResult<any, Error>{
-        path = this.resolvePkgRootPath(path);
+        path = this.resolveFilePath(path);
         if(!fileExistsSync(path))
             return [null, new Error(`YAML file does not exists at path: ${path}`)];
 
@@ -178,9 +181,18 @@ export class ConfigLoader {
 
     //region Utils
 
-    private resolvePkgRootPath(path: string): string{
+    private resolveFilePath(path: string): string{
         if(PKG_ROOT_REGEX.test(path))
             path = path.replace(PKG_ROOT_REGEX, getRootPackageDirnameSync() + sep);
+
+        if(ENV_VAR_REGEX.test(path)){
+            const m = path.match(ENV_VAR_REGEX);
+            if(m.groups?.['var_name']){
+                if(process.env?.[m.groups['var_name']]){
+                    path = path.replace(ENV_VAR_REGEX, process.env[m.groups['var_name']].replace(/[\/\\]+$/, '') + sep);
+                }
+            }
+        }
 
         return resolve(path);
     }
@@ -192,7 +204,7 @@ export class ConfigLoader {
      * @private
      */
     private resolveIncludePath(fromDirname: string, toPath: string): string{
-        return resolve(this.resolvePkgRootPath(fromDirname), toPath);
+        return resolve(this.resolveFilePath(fromDirname), toPath);
     }
 
     //endregion
