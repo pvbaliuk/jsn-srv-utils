@@ -194,7 +194,7 @@ export class ConfigLoader {
             }
         }
 
-        return resolve(path);
+        return resolve(process.cwd(), path);
     }
 
     /**
