@@ -6,6 +6,7 @@ describe('ConfigLoader', () => {
     beforeAll(() => {
         process.env.TEST_CONFIG_PATH = '/home/dev/config-test';
         process.env.TEST_CONFIG_PATH_2 = './relative-config';
+        process.env.TEST_CONFIG_PATH_3 = '%env:TEST_CONFIG_PATH';
         configLoader = ConfigLoader.instance();
     });
 
@@ -16,7 +17,8 @@ describe('ConfigLoader', () => {
             {path: '%pkgroot/tests/../src', shouldBe: resolve(__dirname, '..', 'src')},
             {path: '%env:TEST_CONFIG_PATH/tests', shouldBe: resolve('/home/dev/config-test/tests')},
             {path: '%env:TEST_CONFIG_PATH_2/test', shouldBe: resolve(process.cwd(), 'relative-config', 'test')},
-            {path: '%env:TEST_CONFIG_PATH_2/../test', shouldBe: resolve(process.cwd(), 'relative-config', '..', 'test')}
+            {path: '%env:TEST_CONFIG_PATH_2/../test', shouldBe: resolve(process.cwd(), 'relative-config', '..', 'test')},
+            {path: '%env:TEST_CONFIG_PATH_3/mysql-config', shouldBe: resolve('/home/dev/config-test/mysql-config')}
         ]
 
         test.each(cases)(
@@ -33,7 +35,8 @@ describe('ConfigLoader', () => {
             {from: '/home/dev/configs', to: '/home/dev/mysql.yml', shouldBe: resolve('/home/dev/mysql.yml')},
             {from: '%pkgroot/configs', to: './mysql.yml', shouldBe: resolve(__dirname, '..', 'configs', 'mysql.yml')},
             {from: '%env:TEST_CONFIG_PATH/tests', to: './mysql.yml', shouldBe: resolve('/home/dev/config-test/tests/mysql.yml')},
-            {from: '%env:TEST_CONFIG_PATH_2/tests', to: './mysql.yml', shouldBe: resolve(process.cwd(), 'relative-config', 'tests', 'mysql.yml')}
+            {from: '%env:TEST_CONFIG_PATH_2/tests', to: './mysql.yml', shouldBe: resolve(process.cwd(), 'relative-config', 'tests', 'mysql.yml')},
+            {from: '%env:TEST_CONFIG_PATH_3/tests', to: './mysql.yml', shouldBe: resolve('/home/dev/config-test/tests/mysql.yml')}
         ];
 
         test.each(cases)(

@@ -182,17 +182,20 @@ export class ConfigLoader {
     //region Utils
 
     private resolveFilePath(path: string): string{
-        if(PKG_ROOT_REGEX.test(path))
-            path = path.replace(PKG_ROOT_REGEX, getRootPackageDirnameSync() + sep);
-
-        if(ENV_VAR_REGEX.test(path)){
+        const initialPath = path;
+        while(ENV_VAR_REGEX.test(path)){
             const m = path.match(ENV_VAR_REGEX);
             if(m.groups?.['var_name']){
                 if(process.env?.[m.groups['var_name']]){
                     path = path.replace(ENV_VAR_REGEX, process.env[m.groups['var_name']].replace(/[\/\\]+$/, '') + sep);
+                }else{
+                    throw new Error(`Failed to resolve path: "${initialPath}"`);
                 }
             }
         }
+
+        if(PKG_ROOT_REGEX.test(path))
+            path = path.replace(PKG_ROOT_REGEX, getRootPackageDirnameSync() + sep);
 
         return resolve(process.cwd(), path);
     }
