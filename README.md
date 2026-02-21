@@ -32,14 +32,25 @@ import {getRootPackageDirnameSync} from '@jsnw/srv-utils';
 const root = getRootPackageDirnameSync();
 ```
 
-### ConfigLoader.loadAndValidate(path, schema, addProps?)
-Loads a YAML file and validates it with a Zod schema. It also injects `isDev` based on `APP_CONTEXT`, `APPLICATION_CONTEXT`, or `NODE_ENV`. You can use `%pkgroot/` prefix in the path for automatic project-root resolution.
+### ConfigLoader.loadConfig(path, schema, addProps?)
+Loads a YAML file and validates it with a Zod schema. It also injects `isDev` based on `APP_CONTEXT`, `APPLICATION_CONTEXT`, or `NODE_ENV`.
+
+**Path resolution prefixes:**
+- `%pkgroot/` - Resolves to the project root directory
+- `%env:VAR_NAME/` - Resolves based on environment variable value
 
 ```ts
 import {ConfigLoader, configSchemas} from '@jsnw/srv-utils';
 
-const config = ConfigLoader.loadAndValidate(
+// Using project root
+const config = ConfigLoader.loadConfig(
   '%pkgroot/config.yml',
+  configSchemas.mongodbConnection
+);
+
+// Using environment variable
+const config = ConfigLoader.loadConfig(
+  '%env:CONFIG_PATH/config.yml',
   configSchemas.mongodbConnection
 );
 ```
