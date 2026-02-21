@@ -112,7 +112,7 @@ export class ConfigLoader {
         const {data: parsed, error, success} = schema.safeParse(data);
         if(!success){
             if(error && error instanceof ZodError)
-                return [null, new Error(`Failed to validate yaml (#1)`)];
+                return [null, new Error(`Failed to validate yaml (#1). Error message: ${z.prettifyError(error)}`)];
 
             return [null, new Error(`Failed to validate yaml (#2)`)];
         }
