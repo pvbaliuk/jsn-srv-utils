@@ -46,7 +46,7 @@ export class ConfigLoader {
             process.exit(1);
         }
 
-        const [processedYaml, includeErrors] = loader.processIncludes(dirname(path), yaml);
+        const [processedYaml, includeErrors] = loader.processIncludes(dirname(loader.resolveFilePath(path)), yaml);
         if(includeErrors && includeErrors.length > 0){
             for(const err of includeErrors)
                 console.error(`$include error: ${err.message}`);
@@ -197,7 +197,7 @@ export class ConfigLoader {
         if(PKG_ROOT_REGEX.test(path))
             path = path.replace(PKG_ROOT_REGEX, getRootPackageDirnameSync() + sep);
 
-        return resolve(process.cwd(), path);
+        return resolve(path);
     }
 
     /**
