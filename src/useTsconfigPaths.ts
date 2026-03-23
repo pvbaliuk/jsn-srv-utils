@@ -24,9 +24,14 @@ export function useTsconfigPaths({basePath, tsconfigPath}: UseTsconfigPathsOptio
     if(!basePath && !tsconfig?.compilerOptions?.baseUrl)
         throw new TypeError('Either basePath option should be provided or tsconfig.json should contain compilerOptions.baseUrl property');
 
-    const baseUrl = tsconfig?.compilerOptions?.baseUrl
-        ? resolve(tsconfig.compilerOptions.baseUrl)
-        : resolve(basePath);
+    const baseUrl = basePath
+        ? resolve(basePath)
+        : tsconfig?.compilerOptions?.baseUrl
+            ? resolve(tsconfig.compilerOptions.baseUrl)
+            : undefined;
+
+    if(baseUrl === undefined)
+        throw new Error('Unable to resolve base path for tsconfig paths');
 
     Object.entries((tsconfig?.compilerOptions?.paths ?? {}) as Record<string, string[]>)
         .forEach(([moduleName, pathArray]) => {
