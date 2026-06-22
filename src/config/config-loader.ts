@@ -170,10 +170,12 @@ export class ConfigLoader {
                 }else{
                     if(typeof node[field] === 'string' && /^\s*\$[A-Z0-9_]+$/.test(node[field]))
                         node[field] = process.env?.[node[field].trim().slice(1)] ?? '';
-
-                    if(typeof node[field] === 'object' && !Array.isArray(node[field]))
-                        nodesToVisit.push(node[field]);
                 }
+            }
+
+            for(const k of Object.keys(node)){
+                if(Object.hasOwn(node, k) && typeof node[k] === 'object' && !Array.isArray(node[k]))
+                    nodesToVisit.push(node[k]);
             }
         }
 
