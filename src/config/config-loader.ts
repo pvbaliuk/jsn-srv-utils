@@ -46,10 +46,10 @@ export class ConfigLoader {
             process.exit(1);
         }
 
-        const [processedYaml, includeErrors] = loader.processIncludes(dirname(loader.resolveFilePath(path)), yaml);
-        if(includeErrors && includeErrors.length > 0){
-            for(const err of includeErrors)
-                console.error(`$include error: ${err.message}`);
+        const [processedYaml, directiveErrors] = loader.processDirectives(dirname(loader.resolveFilePath(path)), yaml);
+        if(directiveErrors && directiveErrors.length > 0){
+            for(const err of directiveErrors)
+                console.error(`directive error: ${err.message}`);
 
             process.exit(1);
         }
@@ -129,7 +129,7 @@ export class ConfigLoader {
      * @returns {ErrorResult<any, Error[]>}
      * @protected
      */
-    protected processIncludes(mainYamlDirname: string, yaml: any): ErrorResult<any, Error[]>{
+    protected processDirectives(mainYamlDirname: string, yaml: any): ErrorResult<any, Error[]>{
         if(typeof yaml !== 'object')
             return yaml;
 
@@ -141,38 +141,39 @@ export class ConfigLoader {
             if(typeof node !== 'object' || Array.isArray(node))
                 continue;
 
-            if(node['$include']){
-                const $includePaths: string[] = [];
-                if(typeof node['$include'] === 'string'){
-                    $includePaths.push(node['$include']);
-                }else if(Array.isArray(node['$include'])){
-                    $includePaths.push(...(
-                        node['$include']
-                            .filter(v =>
-                                v && typeof v === 'string' && v.trim() !== ''
-                            )
-                    ));
-                }
-
-                delete node['$include'];
-
-                for(const path of $includePaths){
-                    const [loadedYaml, loadError] = this.loadYamlFile(this.resolveIncludePath(mainYamlDirname, path));
-                    if(loadError) {
-                        errors.push(loadError)
-                    }else{
-                        for(const [k, v] of Object.entries(loadedYaml))
-                            node[k] = v;
+            const nodeFields = Object.keys(node);
+            for(const field of nodeFields){
+                if(field === '$include'){
+                    const $includePaths: string[] = [];
+                    if(typeof node['$include'] === 'string'){
+                        $includePaths.push(node['$include']);
+                    }else if(Array.isArray(node['$include'])){
+                        $includePaths.push(...(
+                            node['$include']
+                                .filter(v =>
+                                    v && typeof v === 'string' && v.trim() !== ''
+                                )
+                        ));
                     }
-                }
-            }
 
-            for(const k of Object.keys(node)){
-                if(Object.hasOwn(node, k)
-                    && typeof node[k] === 'object'
-                    && !Array.isArray(node[k])
-                )
-                    nodesToVisit.push(node[k]);
+                    delete node['$include'];
+
+                    for(const path of $includePaths){
+                        const [loadedYaml, loadError] = this.loadYamlFile(this.resolveIncludePath(mainYamlDirname, path));
+                        if(loadError) {
+                            errors.push(loadError)
+                        }else{
+                            for(const [k, v] of Object.entries(loadedYaml))
+                                node[k] = v;
+                        }
+                    }
+                }else{
+                    if(typeof node[field] === 'string' && /^\s*\$[A-Z0-9_]+$/.test(node[field]))
+                        node[field] = process.env?.[node[field].trim().slice(1)] ?? '';
+
+                    if(typeof node[field] === 'object' && !Array.isArray(node[field]))
+                        nodesToVisit.push(node[field]);
+                }
             }
         }
 
