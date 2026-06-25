@@ -9,19 +9,9 @@ npm install @jsnw/srv-utils
 ```
 
 Optional dependencies:
-- `module-alias` for `useTsconfigPaths`
 - `@nestjs/core` and `@nestjs/common` for `withNest`
 
 ## Exports
-
-### useTsconfigPaths(fromPath, tsconfigPath)
-Loads `compilerOptions.paths` from a tsconfig file and registers them via `module-alias`.
-
-```ts
-import {useTsconfigPaths} from '@jsnw/srv-utils';
-
-useTsconfigPaths(__dirname, './tsconfig.json');
-```
 
 ### getRootPackageDirnameSync()
 Finds the highest directory (from the current module) that still has a readable `package.json`.
