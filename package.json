@@ -1,6 +1,6 @@
 {
   "name": "@jsnw/srv-utils",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Server-side utilities for Node.js/TypeScript: tsconfig paths, Nest helpers, and config loading.",
   "engines": {
     "node": ">=20"

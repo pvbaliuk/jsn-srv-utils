@@ -1,5 +1,6 @@
 import type {INestApplicationContext} from '@nestjs/common';
 import type {NestFactoryStatic} from '@nestjs/core/nest-factory';
+import type {NestApplicationContextOptions} from '@nestjs/common/interfaces/nest-application-context-options.interface';
 
 type WithNestFn = (app: INestApplicationContext, preventClosing: () => void) => Promise<void>;
 
@@ -15,11 +16,12 @@ type WithNestFn = (app: INestApplicationContext, preventClosing: () => void) => 
  * @param {WithNestFn} fn - The function to be executed with the NestJS application context.
  *                             It receives the application instance and a callback to prevent
  *                             automatic application context closure.
+ * @param {NestApplicationContextOptions} [options]
  * @returns {Promise<void>} A promise that resolves when the function execution is complete.
  * @throws - Will throw an error if the `@nestjs/core` and/or `@nestjs/common` library is not found.
  * @throws - Will propagate any error thrown by the executed function `fn`.
  */
-export async function withNest(moduleCls: any, fn: WithNestFn): Promise<void>{
+export async function withNest(moduleCls: any, fn: WithNestFn, options?: NestApplicationContextOptions): Promise<void>{
     let nestFactory: NestFactoryStatic|null = null;
     try{
         nestFactory = (await import('@nestjs/core'))?.NestFactory;
@@ -29,7 +31,7 @@ export async function withNest(moduleCls: any, fn: WithNestFn): Promise<void>{
         throw new Error('@nestjs/core and @nestjs/common are required for this function to work');
     }
 
-    const app = await nestFactory.createApplicationContext(moduleCls);
+    const app = await nestFactory.createApplicationContext(moduleCls, options);
     let closeApplication: boolean = true;
     let _e: Error|undefined = undefined;
 
